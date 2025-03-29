@@ -59,11 +59,6 @@ qa_engine = QAEngine()
 agent_system = AgentSystem()
 in_memory_qa = InMemoryQA()
 
-# Request models
-class RAGRetrieveRequest(BaseModel):
-    query: str
-    document_ids: List[str]
-    max_documents: int = 5
 
 # Initialize FastAPI application
 app = FastAPI(
@@ -288,59 +283,6 @@ async def process_and_answer_in_memory(
             detail="Error processing request"
         )
 
-@app.post("/rag/retrieve")
-@limiter.limit("20/minute")
-async def retrieve_from_source(
-    request: Request,
-    rag_request: RAGRetrieveRequest
-):
-    """
-    Retrieve relevant chunks from existing documents and generate an answer.
-    
-    Args:
-        rag_request: RAGRetrieveRequest containing:
-            - query: The query to find relevant chunks for
-            - document_ids: List of document IDs to search in
-            - max_documents: Maximum number of relevant chunks to return
-        
-    Returns:
-        Dictionary containing:
-        - answer: The generated answer
-        - relevant_chunks: List of relevant document chunks
-        - processing_time: Time taken to retrieve and answer
-    """
-    try:
-        start_time = datetime.now()
-        
-        # Get chunks from storage
-        chunks = await storage.get_chunks_by_document_ids(rag_request.document_ids)
-        
-        # Get relevant chunks using vector store
-        relevant_chunks = await vector_store.get_relevant_chunks(
-            query=rag_request.query,
-            chunks=chunks,
-            top_k=rag_request.max_documents
-        )
-        
-        # Generate answer using QA engine
-        answer_response = await qa_engine.answer_question(
-            question=rag_request.query,
-            relevant_chunks=relevant_chunks
-        )
-        
-        processing_time = (datetime.now() - start_time).total_seconds()
-        
-        return {
-            "answer": answer_response.answer,
-            "relevant_chunks": relevant_chunks,
-            "processing_time": processing_time
-        }
-    except Exception as e:
-        logger.error(f"Error retrieving from source: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=500,
-            detail="Error retrieving from source"
-        )
 
 if __name__ == "__main__":
     uvicorn.run(
