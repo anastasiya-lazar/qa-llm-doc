@@ -1,8 +1,9 @@
+from pathlib import Path
 from typing import List, Tuple
-from langchain_openai import OpenAIEmbeddings
+
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
-from pathlib import Path
+from langchain_openai import OpenAIEmbeddings
 
 from src.core.api.dtos import DocumentChunk
 from src.core.impl.storage import Storage

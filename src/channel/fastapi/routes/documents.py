@@ -1,12 +1,14 @@
-from fastapi import APIRouter, File, UploadFile, Request, HTTPException
 from typing import List
 
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+
+from src.channel.fastapi.config import get_settings
 from src.core.api.dtos import DocumentMetadata
 from src.core.impl.document_processor import DocumentProcessor
-from src.core.impl.vector_store import VectorStore
 from src.core.impl.storage import Storage
-from src.channel.fastapi.config import get_settings
-from .base import limiter, validate_file, logger
+from src.core.impl.vector_store import VectorStore
+
+from .base import limiter, logger, validate_file
 
 settings = get_settings()
 router = APIRouter(prefix="/documents", tags=["documents"])

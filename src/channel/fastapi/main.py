@@ -1,15 +1,17 @@
+import logging
+
+import redis
+import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from dotenv import load_dotenv
-import uvicorn
-import logging
-import redis
 from slowapi.errors import RateLimitExceeded
 
 from src.channel.fastapi.config import get_settings
 from src.channel.fastapi.routes import router
-from src.channel.fastapi.routes.base import rate_limit_handler, global_exception_handler
+from src.channel.fastapi.routes.base import (global_exception_handler,
+                                             rate_limit_handler)
 
 # Load environment variables
 load_dotenv()

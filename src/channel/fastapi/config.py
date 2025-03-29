@@ -1,8 +1,9 @@
-from pydantic_settings import BaseSettings
-from typing import List
 import os
 from functools import lru_cache
 from pathlib import Path
+from typing import List
+
+from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
@@ -12,7 +13,6 @@ class Settings(BaseSettings):
 
     # Security
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
 
     # CORS
     CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
@@ -47,7 +47,6 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    # Get the project root directory (where .env is located)
     root_dir = Path(__file__).parent.parent.parent.parent
     env_path = root_dir / ".env"
 

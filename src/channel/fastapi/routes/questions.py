@@ -1,19 +1,17 @@
-from fastapi import APIRouter, File, UploadFile, Request, HTTPException, Form
 from typing import Optional
 
-from src.core.api.dtos import (
-    QuestionRequest,
-    QuestionResponse,
-    ComplexQueryRequest,
-    ComplexQueryResponse,
-)
-from src.core.impl.vector_store import VectorStore
-from src.core.impl.qa_engine import QAEngine
-from src.core.impl.agent_system import AgentSystem
-from src.core.impl.storage import Storage
-from src.core.impl.in_memory_qa import InMemoryQA
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
+
 from src.channel.fastapi.config import get_settings
-from .base import limiter, validate_file, logger
+from src.core.api.dtos import (ComplexQueryRequest, ComplexQueryResponse,
+                               QuestionRequest, QuestionResponse)
+from src.core.impl.agent_system import AgentSystem
+from src.core.impl.in_memory_qa import InMemoryQA
+from src.core.impl.qa_engine import QAEngine
+from src.core.impl.storage import Storage
+from src.core.impl.vector_store import VectorStore
+
+from .base import limiter, logger, validate_file
 
 settings = get_settings()
 router = APIRouter(prefix="/questions", tags=["questions"])

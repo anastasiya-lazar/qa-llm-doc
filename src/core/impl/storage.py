@@ -1,9 +1,9 @@
-from typing import List, Dict, Any, Optional
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-from src.core.api.dtos import DocumentMetadata, DocumentChunk
+from src.core.api.dtos import DocumentChunk, DocumentMetadata
 
 
 class Storage:

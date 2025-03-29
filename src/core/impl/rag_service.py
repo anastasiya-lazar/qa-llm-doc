@@ -1,9 +1,10 @@
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from src.core.impl.document_processor import DocumentProcessor
-from src.core.impl.vector_store import VectorStore
-from src.core.impl.storage import Storage
 from src.core.impl.in_memory_qa import InMemoryQA
+from src.core.impl.storage import Storage
+from src.core.impl.vector_store import VectorStore
 
 
 class RAGService:

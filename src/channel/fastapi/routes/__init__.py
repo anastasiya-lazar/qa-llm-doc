@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Request
+
+from src.channel.fastapi.config import get_settings
+
+from .base import limiter
 from .documents import router as documents_router
 from .questions import router as questions_router
-from src.channel.fastapi.config import get_settings
-from .base import limiter
 
 settings = get_settings()
 

@@ -1,15 +1,12 @@
-from typing import List
 from datetime import datetime
-from crewai import Agent, Task, Crew, Process
+from typing import List
+
+from crewai import Agent, Crew, Process, Task
 from langchain_openai import ChatOpenAI
 
-from src.core.api.dtos import (
-    ComplexQueryRequest,
-    ComplexQueryResponse,
-    DocumentReference,
-    AgentAction,
-    DocumentChunk,
-)
+from src.core.api.dtos import (AgentAction, ComplexQueryRequest,
+                               ComplexQueryResponse, DocumentChunk,
+                               DocumentReference)
 
 
 class AgentSystem:

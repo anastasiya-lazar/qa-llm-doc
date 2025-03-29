@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Request, HTTPException, UploadFile
+import logging
+
+from fastapi import APIRouter, HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-import magic
-import logging
+from slowapi.util import get_remote_address
 
 from src.channel.fastapi.config import get_settings
 
@@ -28,8 +28,6 @@ async def global_exception_handler(request: Request, exc: Exception):
 # File validation
 async def validate_file(file: UploadFile) -> bool:
     """Validate file type and size"""
-    # Check file size
-    file_size = 0
     content = await file.read()
     file_size = len(content)
     await file.seek(0)  # Reset file pointer
@@ -40,11 +38,7 @@ async def validate_file(file: UploadFile) -> bool:
             detail=f"File too large. Maximum size is {settings.MAX_UPLOAD_SIZE} bytes",
         )
 
-    # Check file type
-    mime = magic.Magic(mime=True)
-    file_type = mime.from_buffer(content)
     file_extension = file.filename.split(".")[-1].lower()
-
     if file_extension not in settings.ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=415,

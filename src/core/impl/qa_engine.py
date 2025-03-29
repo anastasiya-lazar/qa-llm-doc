@@ -1,13 +1,15 @@
-from typing import List
+from collections import defaultdict
 from datetime import datetime
-from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import Document
+from typing import List
+
 from langchain.chains import LLMChain
 from langchain.chains.question_answering import load_qa_chain
-from collections import defaultdict
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema import Document
+from langchain_openai import ChatOpenAI
 
-from src.core.api.dtos import DocumentChunk, QuestionResponse, DocumentReference
+from src.core.api.dtos import (DocumentChunk, DocumentReference,
+                               QuestionResponse)
 
 
 class QAEngine:

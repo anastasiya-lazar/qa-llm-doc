@@ -1,8 +1,9 @@
 from fastapi import UploadFile
+
+from src.core.api.dtos import QuestionResponse
 from src.core.impl.document_processor import DocumentProcessor
 from src.core.impl.qa_engine import QAEngine
 from src.core.impl.vector_store import VectorStore
-from src.core.api.dtos import QuestionResponse
 
 
 class InMemoryQA:

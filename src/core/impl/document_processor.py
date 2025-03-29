@@ -1,11 +1,12 @@
-from typing import List, Dict, Any
 import uuid
-from pathlib import Path
-import PyPDF2
 from io import BytesIO
+from pathlib import Path
+from typing import Any, Dict, List
+
+import PyPDF2
 from docx import Document
 
-from src.core.api.dtos import DocumentType, DocumentMetadata, DocumentChunk
+from src.core.api.dtos import DocumentChunk, DocumentMetadata, DocumentType
 
 
 class DocumentProcessor:
