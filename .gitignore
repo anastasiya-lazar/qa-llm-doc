@@ -35,4 +35,5 @@ venv/
 # Project specific
 *.log
 uploads/
-storage
+storage/
+storage/indices/
