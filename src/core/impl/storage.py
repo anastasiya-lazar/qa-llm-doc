@@ -3,7 +3,8 @@ import json
 from pathlib import Path
 from datetime import datetime
 
-from src.schemas.main_schemas import DocumentMetadata, DocumentChunk
+from src.core.api.dtos import DocumentMetadata, DocumentChunk
+
 
 class Storage:
     def __init__(self, storage_dir: str = "storage"):
@@ -29,8 +30,10 @@ class Storage:
         """Save document metadata to storage."""
         # Convert to dict and ensure datetime is properly serialized
         metadata_dict = metadata.dict()
-        if isinstance(metadata_dict.get('upload_timestamp'), datetime):
-            metadata_dict['upload_timestamp'] = metadata_dict['upload_timestamp'].isoformat()
+        if isinstance(metadata_dict.get("upload_timestamp"), datetime):
+            metadata_dict["upload_timestamp"] = metadata_dict[
+                "upload_timestamp"
+            ].isoformat()
         self.metadata[metadata.document_id] = metadata_dict
         self._save_metadata()
 
@@ -39,8 +42,12 @@ class Storage:
         if document_id in self.metadata:
             doc_data = self.metadata[document_id].copy()
             # Convert ISO format string back to datetime
-            if 'upload_timestamp' in doc_data and isinstance(doc_data['upload_timestamp'], str):
-                doc_data['upload_timestamp'] = datetime.fromisoformat(doc_data['upload_timestamp'])
+            if "upload_timestamp" in doc_data and isinstance(
+                doc_data["upload_timestamp"], str
+            ):
+                doc_data["upload_timestamp"] = datetime.fromisoformat(
+                    doc_data["upload_timestamp"]
+                )
             return DocumentMetadata(**doc_data)
         return None
 
@@ -50,8 +57,12 @@ class Storage:
         for doc in self.metadata.values():
             doc_data = doc.copy()
             # Convert ISO format string back to datetime
-            if 'upload_timestamp' in doc_data and isinstance(doc_data['upload_timestamp'], str):
-                doc_data['upload_timestamp'] = datetime.fromisoformat(doc_data['upload_timestamp'])
+            if "upload_timestamp" in doc_data and isinstance(
+                doc_data["upload_timestamp"], str
+            ):
+                doc_data["upload_timestamp"] = datetime.fromisoformat(
+                    doc_data["upload_timestamp"]
+                )
             documents.append(DocumentMetadata(**doc_data))
         return documents
 
@@ -67,7 +78,7 @@ class Storage:
         """Save document chunks to storage."""
         chunks_file = self.storage_dir / f"{document_id}_chunks.json"
         chunks_data = [chunk.dict() for chunk in chunks]
-        
+
         with open(chunks_file, "w") as f:
             json.dump(chunks_data, f, indent=2, default=str)
 
@@ -85,7 +96,9 @@ class Storage:
                 return [DocumentChunk(**chunk) for chunk in chunks_data]
         return []
 
-    async def get_chunks_by_document_ids(self, document_ids: List[str]) -> List[DocumentChunk]:
+    async def get_chunks_by_document_ids(
+        self, document_ids: List[str]
+    ) -> List[DocumentChunk]:
         """Retrieve chunks from multiple documents."""
         all_chunks = []
         for doc_id in document_ids:
@@ -94,13 +107,11 @@ class Storage:
         return all_chunks
 
     async def update_document_metadata(
-        self,
-        document_id: str,
-        updates: Dict[str, Any]
+        self, document_id: str, updates: Dict[str, Any]
     ) -> Optional[DocumentMetadata]:
         """Update document metadata."""
         if document_id in self.metadata:
             self.metadata[document_id].update(updates)
             self._save_metadata()
             return DocumentMetadata(**self.metadata[document_id])
-        return None 
+        return None

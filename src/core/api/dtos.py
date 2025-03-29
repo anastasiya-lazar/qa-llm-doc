@@ -13,6 +13,7 @@ class DocumentType(str, Enum):
 
 class DocumentMetadata(BaseModel):
     """Metadata for an uploaded document"""
+
     document_id: str
     filename: str
     document_type: DocumentType
@@ -25,6 +26,7 @@ class DocumentMetadata(BaseModel):
 
 class DocumentChunk(BaseModel):
     """A chunk of text from a document with its metadata"""
+
     chunk_id: str
     document_id: str
     content: str
@@ -34,6 +36,7 @@ class DocumentChunk(BaseModel):
 
 class QuestionRequest(BaseModel):
     """Request model for asking a question"""
+
     question: str
     document_ids: Optional[List[str]] = None
     conversation_id: Optional[str] = None
@@ -42,6 +45,7 @@ class QuestionRequest(BaseModel):
 
 class DocumentReference(BaseModel):
     """Reference to a source document"""
+
     document_id: str
     chunk_id: str
     content: str
@@ -51,6 +55,7 @@ class DocumentReference(BaseModel):
 
 class QuestionResponse(BaseModel):
     """Response model for a question"""
+
     answer: str
     source_documents: List[DocumentReference]
     processing_time: float
@@ -59,6 +64,7 @@ class QuestionResponse(BaseModel):
 
 class ComplexQueryRequest(BaseModel):
     """Request model for a complex query requiring multiple agents"""
+
     query: str
     document_ids: Optional[List[str]] = None
     conversation_id: Optional[str] = None
@@ -68,6 +74,7 @@ class ComplexQueryRequest(BaseModel):
 
 class AgentAction(BaseModel):
     """Record of an action taken by an agent"""
+
     agent_name: str
     action: str
     input: Any
@@ -77,6 +84,7 @@ class AgentAction(BaseModel):
 
 class ComplexQueryResponse(BaseModel):
     """Response model for a complex query"""
+
     answer: str
     source_documents: List[DocumentReference]
     processing_time: float

@@ -1,16 +1,12 @@
-from typing import List, Dict, Any, Tuple, Optional
-import numpy as np
+from typing import List, Tuple
 from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from langchain_community.vectorstores import FAISS
-import os
 from pathlib import Path
-import pickle
-import json
 
-from src.schemas.main_schemas import DocumentChunk
-from src.core.storage import Storage
+from src.core.api.dtos import DocumentChunk
+from src.core.impl.storage import Storage
+
 
 class VectorStore:
     _instance = None
@@ -21,7 +17,9 @@ class VectorStore:
             cls._instance = super(VectorStore, cls).__new__(cls)
         return cls._instance
 
-    def __init__(self, dimension: int = 1536, storage: Storage = None):  # OpenAI embeddings dimension
+    def __init__(
+        self, dimension: int = 1536, storage: Storage = None
+    ):  # OpenAI embeddings dimension
         if not self._initialized:
             self.dimension = dimension
             self.embeddings_model = OpenAIEmbeddings()
@@ -33,7 +31,9 @@ class VectorStore:
             self._initialized = True
 
     @classmethod
-    async def create(cls, dimension: int = 1536, storage: Storage = None) -> 'VectorStore':
+    async def create(
+        cls, dimension: int = 1536, storage: Storage = None
+    ) -> "VectorStore":
         """Create and initialize a new VectorStore instance."""
         instance = cls(dimension=dimension, storage=storage)
         await instance._initialize()
@@ -41,7 +41,7 @@ class VectorStore:
 
     async def _initialize(self):
         """Initialize the vector store by loading chunks and building/loading the index."""
-        if hasattr(self, '_store_initialized') and self._store_initialized:
+        if hasattr(self, "_store_initialized") and self._store_initialized:
             return
 
         try:
@@ -50,21 +50,21 @@ class VectorStore:
                 self.vector_store = FAISS.load_local(
                     str(self.index_dir),
                     self.embeddings_model,
-                    allow_dangerous_deserialization=True  # Allow loading our own index
+                    allow_dangerous_deserialization=True,  # Allow loading our own index
                 )
                 print("Loaded existing FAISS index")
-                
+
                 # Load chunks from storage to maintain the chunks list
                 documents = await self.storage.list_documents()
                 all_chunks = []
                 for doc in documents:
                     chunks = await self.storage.get_chunks(doc.document_id)
                     all_chunks.extend(chunks)
-                
+
                 if all_chunks:
                     self.chunks = all_chunks
                     print(f"Loaded {len(all_chunks)} chunks from storage")
-                
+
                 self._store_initialized = True
                 return
 
@@ -74,7 +74,7 @@ class VectorStore:
             for doc in documents:
                 chunks = await self.storage.get_chunks(doc.document_id)
                 all_chunks.extend(chunks)
-            
+
             if all_chunks:
                 # Convert chunks to LangChain documents
                 documents = [
@@ -83,26 +83,26 @@ class VectorStore:
                         metadata={
                             "chunk_id": chunk.chunk_id,
                             "document_id": chunk.document_id,
-                            **chunk.metadata
-                        }
+                            **chunk.metadata,
+                        },
                     )
                     for chunk in all_chunks
                 ]
 
                 # Create new FAISS index
-                self.vector_store = FAISS.from_documents(documents, self.embeddings_model)
+                self.vector_store = FAISS.from_documents(
+                    documents, self.embeddings_model
+                )
                 self.chunks = all_chunks
                 print(f"Built new index with {len(all_chunks)} chunks")
-                
+
                 # Save the index
                 self.save_local(str(self.index_dir))
             else:
                 print("No chunks found in storage")
                 # Initialize empty vector store
-                self.vector_store = FAISS.from_texts(
-                    [""], self.embeddings_model
-                )
-            
+                self.vector_store = FAISS.from_texts([""], self.embeddings_model)
+
             self._store_initialized = True
         except Exception as e:
             print(f"Error initializing vector store: {e}")
@@ -129,8 +129,8 @@ class VectorStore:
                 metadata={
                     "chunk_id": chunk.chunk_id,
                     "document_id": chunk.document_id,
-                    **chunk.metadata
-                }
+                    **chunk.metadata,
+                },
             )
             for chunk in chunks
         ]
@@ -158,19 +158,23 @@ class VectorStore:
 
         # Adjust k if it's larger than the number of chunks
         k = min(k, len(self.chunks))
-        
-        print(f"Searching for {k} most relevant chunks among {len(self.chunks)} total chunks")
-        
+
+        print(
+            f"Searching for {k} most relevant chunks among {len(self.chunks)} total chunks"
+        )
+
         # Search using LangChain's implementation
         docs_and_scores = self.vector_store.similarity_search_with_score(query, k=k)
-        
+
         # Convert to our format
         results = []
         for doc, score in docs_and_scores:
             chunk_id = doc.metadata.get("chunk_id")
             chunk = next((c for c in self.chunks if c.chunk_id == chunk_id), None)
             if chunk:
-                results.append((chunk, 1 / (1 + score)))  # Convert distance to similarity score
+                results.append(
+                    (chunk, 1 / (1 + score))
+                )  # Convert distance to similarity score
                 print(f"Found chunk {chunk_id} with similarity score {1 / (1 + score)}")
             else:
                 print(f"Warning: Could not find chunk {chunk_id} in chunks list")
@@ -180,7 +184,9 @@ class VectorStore:
 
     def get_chunk_by_id(self, chunk_id: str) -> DocumentChunk:
         """Retrieve a chunk by its ID."""
-        return next((chunk for chunk in self.chunks if chunk.chunk_id == chunk_id), None)
+        return next(
+            (chunk for chunk in self.chunks if chunk.chunk_id == chunk_id), None
+        )
 
     def get_chunks_by_document_id(self, document_id: str) -> List[DocumentChunk]:
         """Retrieve all chunks belonging to a specific document."""
@@ -192,12 +198,16 @@ class VectorStore:
         await self._initialize()
 
         # Get chunks to remove
-        chunks_to_remove = [chunk for chunk in self.chunks if chunk.document_id == document_id]
+        chunks_to_remove = [
+            chunk for chunk in self.chunks if chunk.document_id == document_id
+        ]
         if not chunks_to_remove:
             return
 
         # Remove chunks from our list
-        self.chunks = [chunk for chunk in self.chunks if chunk.document_id != document_id]
+        self.chunks = [
+            chunk for chunk in self.chunks if chunk.document_id != document_id
+        ]
 
         # Rebuild the vector store with remaining chunks
         if self.chunks:
@@ -207,8 +217,8 @@ class VectorStore:
                     metadata={
                         "chunk_id": chunk.chunk_id,
                         "document_id": chunk.document_id,
-                        **chunk.metadata
-                    }
+                        **chunk.metadata,
+                    },
                 )
                 for chunk in self.chunks
             ]
@@ -222,19 +232,16 @@ class VectorStore:
             self.save_local(str(self.index_dir))
 
     async def get_relevant_chunks(
-        self,
-        query: str,
-        chunks: List[DocumentChunk],
-        top_k: int = 5
+        self, query: str, chunks: List[DocumentChunk], top_k: int = 5
     ) -> List[DocumentChunk]:
         """
         Get the most relevant chunks from a list of chunks for a given query.
-        
+
         Args:
             query: The search query
             chunks: List of chunks to search in
             top_k: Number of most relevant chunks to return
-            
+
         Returns:
             List of most relevant chunks
         """
@@ -248,17 +255,17 @@ class VectorStore:
                 metadata={
                     "chunk_id": chunk.chunk_id,
                     "document_id": chunk.document_id,
-                    **chunk.metadata
-                }
+                    **chunk.metadata,
+                },
             )
             for chunk in chunks
         ]
-        
+
         temp_store = FAISS.from_documents(documents, self.embeddings_model)
-        
+
         # Search in the temporary store
         docs = temp_store.similarity_search(query, k=min(top_k, len(chunks)))
-        
+
         # Convert back to chunks
         relevant_chunks = []
         for doc in docs:
@@ -267,4 +274,4 @@ class VectorStore:
             if chunk:
                 relevant_chunks.append(chunk)
 
-        return relevant_chunks 
+        return relevant_chunks

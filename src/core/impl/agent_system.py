@@ -1,65 +1,68 @@
-from typing import List, Dict, Any
+from typing import List
 from datetime import datetime
 from crewai import Agent, Task, Crew, Process
 from langchain_openai import ChatOpenAI
 
-from src.schemas.main_schemas import (
+from src.core.api.dtos import (
     ComplexQueryRequest,
     ComplexQueryResponse,
     DocumentReference,
     AgentAction,
-    DocumentChunk
+    DocumentChunk,
 )
+
 
 class AgentSystem:
     def __init__(self):
         self.llm = ChatOpenAI(
             model_name="gpt-4-turbo-preview",
             temperature=0.7,
-            max_tokens=1000  # Limit response length for faster processing
+            max_tokens=1000,  # Limit response length for faster processing
         )
 
     def _create_researcher_agent(self) -> Agent:
         """Create a researcher agent specialized in finding relevant information."""
         return Agent(
-            role='Research Analyst',
-            goal='Find and analyze relevant information from documents',
+            role="Research Analyst",
+            goal="Find and analyze relevant information from documents",
             backstory="""You are an expert research analyst with a keen eye for detail.
             Your job is to thoroughly analyze documents and extract relevant information
             to answer complex queries.""",
             verbose=False,  # Reduce logging for better performance
             allow_delegation=False,
-            llm=self.llm
+            llm=self.llm,
         )
 
     def _create_writer_agent(self) -> Agent:
         """Create a writer agent specialized in synthesizing information."""
         return Agent(
-            role='Content Writer',
-            goal='Synthesize information into clear, coherent responses',
+            role="Content Writer",
+            goal="Synthesize information into clear, coherent responses",
             backstory="""You are a skilled content writer with expertise in
             synthesizing complex information into clear, concise explanations.
             Your job is to take research findings and create well-structured,
             comprehensive responses.""",
             verbose=False,  # Reduce logging for better performance
             allow_delegation=False,
-            llm=self.llm
+            llm=self.llm,
         )
 
     def _create_analyst_agent(self) -> Agent:
         """Create an analyst agent specialized in critical analysis."""
         return Agent(
-            role='Critical Analyst',
-            goal='Analyze information critically and identify key insights',
+            role="Critical Analyst",
+            goal="Analyze information critically and identify key insights",
             backstory="""You are a critical analyst with expertise in identifying
             patterns, connections, and implications in complex information.
             Your job is to provide deep insights and identify potential implications.""",
             verbose=False,  # Reduce logging for better performance
             allow_delegation=False,
-            llm=self.llm
+            llm=self.llm,
         )
 
-    def _convert_chunks_to_references(self, chunks: List[DocumentChunk]) -> List[DocumentReference]:
+    def _convert_chunks_to_references(
+        self, chunks: List[DocumentChunk]
+    ) -> List[DocumentReference]:
         """Convert DocumentChunk objects to DocumentReference objects."""
         return [
             DocumentReference(
@@ -67,15 +70,13 @@ class AgentSystem:
                 chunk_id=chunk.chunk_id,
                 content=chunk.content,
                 metadata=chunk.metadata,
-                similarity_score=1.0  # Default similarity score
+                similarity_score=1.0,  # Default similarity score
             )
             for chunk in chunks
         ]
 
     async def process_complex_query(
-        self,
-        request: ComplexQueryRequest,
-        relevant_chunks: List[DocumentChunk]
+        self, request: ComplexQueryRequest, relevant_chunks: List[DocumentChunk]
     ) -> ComplexQueryResponse:
         """Process a complex query using multiple specialized agents."""
         start_time = datetime.now()
@@ -94,7 +95,9 @@ class AgentSystem:
             agents = [self._create_researcher_agent(), self._create_writer_agent()]
 
         # Prepare context from chunks (limit context length for better performance)
-        context = "\n".join([chunk.content for chunk in relevant_chunks[:3]])  # Use only top 3 chunks
+        context = "\n".join(
+            [chunk.content for chunk in relevant_chunks[:3]]
+        )  # Use only top 3 chunks
 
         # Create tasks for each agent
         tasks = []
@@ -107,7 +110,7 @@ class AgentSystem:
                     
                     Focus on finding relevant information and key facts.""",
                     agent=agent,
-                    expected_output="A comprehensive research summary with key findings and relevant information from the documents."
+                    expected_output="A comprehensive research summary with key findings and relevant information from the documents.",
                 )
             elif i == 1:  # Second agent (writer)
                 task = Task(
@@ -116,7 +119,7 @@ class AgentSystem:
                     
                     Synthesize the information into a clear, well-structured answer.""",
                     agent=agent,
-                    expected_output="A well-structured, comprehensive response that answers the query using the research findings."
+                    expected_output="A well-structured, comprehensive response that answers the query using the research findings.",
                 )
             else:  # Additional agents (analyst)
                 task = Task(
@@ -125,7 +128,7 @@ class AgentSystem:
                     
                     Provide critical insights and identify key implications.""",
                     agent=agent,
-                    expected_output="Critical analysis and insights about the research findings and their implications."
+                    expected_output="Critical analysis and insights about the research findings and their implications.",
                 )
             tasks.append(task)
 
@@ -134,7 +137,7 @@ class AgentSystem:
             agents=agents,
             tasks=tasks,
             process=Process.sequential,
-            verbose=False  # Reduce logging for better performance
+            verbose=False,  # Reduce logging for better performance
         )
 
         # Execute the crew's tasks
@@ -142,13 +145,15 @@ class AgentSystem:
 
         # Record agent actions
         for agent, task in zip(agents, tasks):
-            agent_actions.append(AgentAction(
-                agent_name=agent.role,
-                action="task_execution",
-                input=task.description,
-                output=result,
-                timestamp=datetime.now()
-            ))
+            agent_actions.append(
+                AgentAction(
+                    agent_name=agent.role,
+                    action="task_execution",
+                    input=task.description,
+                    output=result,
+                    timestamp=datetime.now(),
+                )
+            )
 
         processing_time = (datetime.now() - start_time).total_seconds()
 
@@ -160,5 +165,5 @@ class AgentSystem:
             source_documents=document_references,
             processing_time=processing_time,
             conversation_id=request.conversation_id,
-            agent_actions=agent_actions
-        ) 
+            agent_actions=agent_actions,
+        )
