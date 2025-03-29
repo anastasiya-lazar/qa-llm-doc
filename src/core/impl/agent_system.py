@@ -2,20 +2,22 @@ from datetime import datetime
 from typing import List
 
 from crewai import Agent, Crew, Process, Task
-from langchain_openai import ChatOpenAI
 
 from src.core.api.dtos import (AgentAction, ComplexQueryRequest,
                                ComplexQueryResponse, DocumentChunk,
                                DocumentReference)
+from src.core.impl.llm.factory import LLMFactory, LLMProvider
+from src.core.impl.llm.base import LLMConfig
 
 
 class AgentSystem:
-    def __init__(self):
-        self.llm = ChatOpenAI(
+    def __init__(self, llm_provider: LLMProvider = LLMProvider.OPENAI):
+        self.llm_config = LLMConfig(
             model_name="gpt-4-turbo-preview",
             temperature=0.7,
-            max_tokens=1000,  # Limit response length for faster processing
+            max_tokens=1000,
         )
+        self.llm = LLMFactory.create(llm_provider, self.llm_config)
 
     def _create_researcher_agent(self) -> Agent:
         """Create a researcher agent specialized in finding relevant information."""
@@ -25,9 +27,9 @@ class AgentSystem:
             backstory="""You are an expert research analyst with a keen eye for detail.
             Your job is to thoroughly analyze documents and extract relevant information
             to answer complex queries.""",
-            verbose=False,  # Reduce logging for better performance
+            verbose=False,
             allow_delegation=False,
-            llm=self.llm,
+            llm=self.llm.langchain_llm,
         )
 
     def _create_writer_agent(self) -> Agent:
@@ -39,9 +41,9 @@ class AgentSystem:
             synthesizing complex information into clear, concise explanations.
             Your job is to take research findings and create well-structured,
             comprehensive responses.""",
-            verbose=False,  # Reduce logging for better performance
+            verbose=False,
             allow_delegation=False,
-            llm=self.llm,
+            llm=self.llm.langchain_llm,
         )
 
     def _create_analyst_agent(self) -> Agent:
@@ -52,9 +54,9 @@ class AgentSystem:
             backstory="""You are a critical analyst with expertise in identifying
             patterns, connections, and implications in complex information.
             Your job is to provide deep insights and identify potential implications.""",
-            verbose=False,  # Reduce logging for better performance
+            verbose=False,
             allow_delegation=False,
-            llm=self.llm,
+            llm=self.llm.langchain_llm,
         )
 
     def _convert_chunks_to_references(
@@ -67,7 +69,7 @@ class AgentSystem:
                 chunk_id=chunk.chunk_id,
                 content=chunk.content,
                 metadata=chunk.metadata,
-                similarity_score=1.0,  # Default similarity score
+                similarity_score=1.0,
             )
             for chunk in chunks
         ]
@@ -91,10 +93,10 @@ class AgentSystem:
         if not agents:
             agents = [self._create_researcher_agent(), self._create_writer_agent()]
 
-        # Prepare context from chunks (limit context length for better performance)
+        # Prepare context from chunks
         context = "\n".join(
             [chunk.content for chunk in relevant_chunks[:3]]
-        )  # Use only top 3 chunks
+        )
 
         # Create tasks for each agent
         tasks = []
@@ -134,7 +136,7 @@ class AgentSystem:
             agents=agents,
             tasks=tasks,
             process=Process.sequential,
-            verbose=False,  # Reduce logging for better performance
+            verbose=False,
         )
 
         # Execute the crew's tasks

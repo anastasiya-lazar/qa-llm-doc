@@ -100,8 +100,7 @@ async def process_and_answer_in_memory(
         await validate_file(file)
 
         # Initialize vector store and in-memory QA
-        vector_store = await VectorStore.create(storage=storage)
-        in_memory_qa = await InMemoryQA.create(vector_store=vector_store)
+        in_memory_qa = await InMemoryQA.create()
 
         # Process and answer
         response = await in_memory_qa.process_and_answer(
