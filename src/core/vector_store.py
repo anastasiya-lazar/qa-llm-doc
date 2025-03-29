@@ -21,7 +21,22 @@ class VectorStore:
         self.index_dir = Path(self.storage.storage_dir) / "indices"
         self.index_dir.mkdir(parents=True, exist_ok=True)
         self.vector_store = None
-        self._load_chunks_from_storage()
+        # Initialize asynchronously
+        self._initialized = False
+
+    @classmethod
+    async def create(cls, dimension: int = 1536, storage: Storage = None) -> 'VectorStore':
+        """Create and initialize a new VectorStore instance."""
+        instance = cls(dimension=dimension, storage=storage)
+        await instance._load_chunks_from_storage()
+        instance._initialized = True
+        return instance
+
+    async def ensure_initialized(self):
+        """Ensure the vector store is initialized."""
+        if not self._initialized:
+            await self._load_chunks_from_storage()
+            self._initialized = True
 
     @classmethod
     def load_local(
@@ -80,9 +95,21 @@ class VectorStore:
             if (self.index_dir / "index.faiss").exists():
                 self.vector_store = FAISS.load_local(
                     str(self.index_dir),
-                    self.embeddings_model
+                    self.embeddings_model,
+                    allow_dangerous_deserialization=True  # Allow loading our own index
                 )
                 print("Loaded existing FAISS index")
+                
+                # Load chunks from storage to maintain the chunks list
+                documents = await self.storage.list_documents()
+                all_chunks = []
+                for doc in documents:
+                    chunks = await self.storage.get_chunks(doc.document_id)
+                    all_chunks.extend(chunks)
+                
+                if all_chunks:
+                    self.chunks = all_chunks
+                    print(f"Loaded {len(all_chunks)} chunks from storage")
                 return
 
             # If no index exists, load from storage and build new index
@@ -95,11 +122,16 @@ class VectorStore:
             if all_chunks:
                 await self.add_chunks(all_chunks)
                 print(f"Built new index with {len(all_chunks)} chunks")
+            else:
+                print("No chunks found in storage")
         except Exception as e:
             print(f"Error loading chunks from storage: {e}")
+            raise
 
     async def add_chunks(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to the vector store."""
+        await self.ensure_initialized()
+        
         if not chunks:
             return
 
@@ -130,14 +162,16 @@ class VectorStore:
 
     async def search(self, query: str, k: int = 5) -> List[Tuple[DocumentChunk, float]]:
         """Search for similar chunks using a query string."""
+        await self.ensure_initialized()
+        
         if not self.chunks:
-            # Try to load chunks if none exist
-            await self._load_chunks_from_storage()
-            if not self.chunks:
-                return []
+            print("No chunks available for search")
+            return []
 
         # Adjust k if it's larger than the number of chunks
         k = min(k, len(self.chunks))
+        
+        print(f"Searching for {k} most relevant chunks among {len(self.chunks)} total chunks")
         
         # Search using LangChain's implementation
         docs_and_scores = self.vector_store.similarity_search_with_score(query, k=k)
@@ -149,7 +183,11 @@ class VectorStore:
             chunk = next((c for c in self.chunks if c.chunk_id == chunk_id), None)
             if chunk:
                 results.append((chunk, 1 / (1 + score)))  # Convert distance to similarity score
+                print(f"Found chunk {chunk_id} with similarity score {1 / (1 + score)}")
+            else:
+                print(f"Warning: Could not find chunk {chunk_id} in chunks list")
 
+        print(f"Found {len(results)} relevant chunks")
         return results
 
     def get_chunk_by_id(self, chunk_id: str) -> DocumentChunk:

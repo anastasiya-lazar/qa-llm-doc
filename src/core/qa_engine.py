@@ -5,6 +5,7 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
 from langchain.chains import LLMChain
 from langchain.chains.question_answering import load_qa_chain
+from collections import defaultdict
 
 from src.schemas.main_schemas import DocumentChunk, QuestionResponse, DocumentReference
 
@@ -19,6 +20,10 @@ class QAEngine:
             chain_type="stuff",
             verbose=True
         )
+        # Store conversation history
+        self.conversation_history = defaultdict(list)
+        # Store document history per conversation
+        self.conversation_documents = defaultdict(list)
 
     async def answer_question(
         self,
@@ -26,7 +31,7 @@ class QAEngine:
         relevant_chunks: List[DocumentChunk],
         conversation_id: str = None
     ) -> QuestionResponse:
-        """Generate an answer to a question using relevant document chunks."""
+        """Generate an answer to a question using relevant document chunks and conversation history."""
         # Convert chunks to LangChain documents
         documents = [
             Document(
@@ -39,6 +44,19 @@ class QAEngine:
             )
             for chunk in relevant_chunks
         ]
+
+        # If conversation_id is provided, add previous context
+        if conversation_id:
+            # Add previous documents to current context
+            previous_documents = self.conversation_documents[conversation_id]
+            documents.extend(previous_documents)
+            
+            # Add previous Q&A pairs to the question for context
+            if self.conversation_history[conversation_id]:
+                history_context = "\nPrevious conversation:\n"
+                for prev_q, prev_a in self.conversation_history[conversation_id]:
+                    history_context += f"Q: {prev_q}\n{prev_a}\n"  # Removed A: prefix
+                question = f"{history_context}\nCurrent question: {question}"
 
         # Generate answer using the QA chain
         start_time = datetime.now()
@@ -59,6 +77,12 @@ class QAEngine:
             )
             for chunk in relevant_chunks
         ]
+
+        # Update conversation history if conversation_id is provided
+        if conversation_id:
+            self.conversation_history[conversation_id].append((question, result))
+            # Update document history with new documents
+            self.conversation_documents[conversation_id].extend(documents)
 
         return QuestionResponse(
             answer=result,

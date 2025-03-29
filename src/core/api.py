@@ -1,17 +1,24 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Body
 from typing import Optional, List
 from src.core.in_memory_qa import InMemoryQA
 from src.core.rag_service import RAGService
-from src.schemas.main_schemas import QuestionResponse, DocumentChunk, DocumentMetadata
+from src.schemas.main_schemas import QuestionResponse, DocumentChunk, DocumentMetadata, QuestionRequest
 from src.core.vector_store import VectorStore
 from src.core.storage import Storage
 from datetime import datetime
 
 router = APIRouter()
-in_memory_qa = InMemoryQA()
+in_memory_qa = None  # Will be initialized asynchronously
 rag_service = RAGService()
 storage = Storage()
-vector_store = VectorStore(storage=storage)
+vector_store = None  # Will be initialized asynchronously
+
+@router.on_event("startup")
+async def startup_event():
+    """Initialize services on startup."""
+    global in_memory_qa, vector_store
+    in_memory_qa = await InMemoryQA.create()
+    vector_store = await VectorStore.create(storage=storage)
 
 @router.post("/qa/in-memory", response_model=QuestionResponse)
 async def process_and_answer(
@@ -153,4 +160,43 @@ async def retrieve_from_source(
         raise HTTPException(
             status_code=500,
             detail="Error retrieving from source"
+        )
+
+@router.post("/questions/ask", response_model=QuestionResponse)
+async def ask_question(
+    request: QuestionRequest
+) -> QuestionResponse:
+    """
+    Ask a question about previously uploaded documents.
+    
+    Args:
+        request: QuestionRequest containing the question and optional parameters
+        
+    Returns:
+        QuestionResponse containing the answer and source documents
+    """
+    try:
+        # Ensure services are initialized
+        await in_memory_qa.ensure_initialized()
+        await vector_store.ensure_initialized()
+        
+        # Search for relevant chunks using vector store
+        relevant_chunks = await vector_store.search(
+            request.question,
+            k=request.max_documents
+        )
+        
+        # Get answer from QA engine
+        response = await in_memory_qa.qa_engine.answer_question(
+            question=request.question,
+            relevant_chunks=[chunk for chunk, _ in relevant_chunks],
+            conversation_id=request.conversation_id
+        )
+        
+        return response
+    except Exception as e:
+        logger.error(f"Error processing question: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Error processing question"
         ) 
