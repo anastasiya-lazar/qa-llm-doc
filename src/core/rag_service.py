@@ -1,13 +1,22 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from src.core.document_processor import DocumentProcessor
 from src.core.vector_store import VectorStore
 from src.schemas.main_schemas import DocumentChunk, DocumentMetadata
+from src.core.storage import Storage
+from src.core.in_memory_qa import InMemoryQA
 
 class RAGService:
     def __init__(self):
         self.document_processor = DocumentProcessor()
-        self.vector_store = VectorStore()
+        self.vector_store = None
+        self.qa = None
+        self.storage = Storage()
+
+    async def initialize(self):
+        """Initialize the RAG service components."""
+        self.vector_store = await VectorStore.create(storage=self.storage)
+        self.qa = await InMemoryQA.create(vector_store=self.vector_store)
 
     async def process_and_retrieve(
         self,
@@ -59,4 +68,10 @@ class RAGService:
             "document_metadata": document_metadata,
             "relevant_chunks": relevant_chunks,
             "processing_time": processing_time
-        } 
+        }
+
+    async def answer_question(self, question: str, document_ids: Optional[List[str]] = None) -> str:
+        """Answer a question using the RAG system."""
+        if not self.qa:
+            await self.initialize()
+        return await self.qa.answer_question(question, document_ids) 

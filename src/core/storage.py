@@ -27,18 +27,33 @@ class Storage:
 
     async def save_document(self, metadata: DocumentMetadata) -> None:
         """Save document metadata to storage."""
-        self.metadata[metadata.document_id] = metadata.dict()
+        # Convert to dict and ensure datetime is properly serialized
+        metadata_dict = metadata.dict()
+        if isinstance(metadata_dict.get('upload_timestamp'), datetime):
+            metadata_dict['upload_timestamp'] = metadata_dict['upload_timestamp'].isoformat()
+        self.metadata[metadata.document_id] = metadata_dict
         self._save_metadata()
 
     async def get_document(self, document_id: str) -> Optional[DocumentMetadata]:
         """Retrieve document metadata from storage."""
         if document_id in self.metadata:
-            return DocumentMetadata(**self.metadata[document_id])
+            doc_data = self.metadata[document_id].copy()
+            # Convert ISO format string back to datetime
+            if 'upload_timestamp' in doc_data and isinstance(doc_data['upload_timestamp'], str):
+                doc_data['upload_timestamp'] = datetime.fromisoformat(doc_data['upload_timestamp'])
+            return DocumentMetadata(**doc_data)
         return None
 
     async def list_documents(self) -> List[DocumentMetadata]:
         """List all documents in storage."""
-        return [DocumentMetadata(**doc) for doc in self.metadata.values()]
+        documents = []
+        for doc in self.metadata.values():
+            doc_data = doc.copy()
+            # Convert ISO format string back to datetime
+            if 'upload_timestamp' in doc_data and isinstance(doc_data['upload_timestamp'], str):
+                doc_data['upload_timestamp'] = datetime.fromisoformat(doc_data['upload_timestamp'])
+            documents.append(DocumentMetadata(**doc_data))
+        return documents
 
     async def delete_document(self, document_id: str) -> bool:
         """Delete a document from storage."""

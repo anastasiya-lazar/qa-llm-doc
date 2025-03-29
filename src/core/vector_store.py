@@ -13,83 +13,37 @@ from src.schemas.main_schemas import DocumentChunk
 from src.core.storage import Storage
 
 class VectorStore:
+    _instance = None
+    _initialized = False
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(VectorStore, cls).__new__(cls)
+        return cls._instance
+
     def __init__(self, dimension: int = 1536, storage: Storage = None):  # OpenAI embeddings dimension
-        self.dimension = dimension
-        self.embeddings_model = OpenAIEmbeddings()
-        self.chunks: List[DocumentChunk] = []
-        self.storage = storage or Storage()
-        self.index_dir = Path(self.storage.storage_dir) / "indices"
-        self.index_dir.mkdir(parents=True, exist_ok=True)
-        self.vector_store = None
-        # Initialize asynchronously
-        self._initialized = False
+        if not self._initialized:
+            self.dimension = dimension
+            self.embeddings_model = OpenAIEmbeddings()
+            self.chunks: List[DocumentChunk] = []
+            self.storage = storage or Storage()
+            self.index_dir = Path(self.storage.storage_dir) / "indices"
+            self.index_dir.mkdir(parents=True, exist_ok=True)
+            self.vector_store = None
+            self._initialized = True
 
     @classmethod
     async def create(cls, dimension: int = 1536, storage: Storage = None) -> 'VectorStore':
         """Create and initialize a new VectorStore instance."""
         instance = cls(dimension=dimension, storage=storage)
-        await instance._load_chunks_from_storage()
-        instance._initialized = True
+        await instance._initialize()
         return instance
 
-    async def ensure_initialized(self):
-        """Ensure the vector store is initialized."""
-        if not self._initialized:
-            await self._load_chunks_from_storage()
-            self._initialized = True
+    async def _initialize(self):
+        """Initialize the vector store by loading chunks and building/loading the index."""
+        if hasattr(self, '_store_initialized') and self._store_initialized:
+            return
 
-    @classmethod
-    def load_local(
-        cls,
-        path: str,
-        embeddings_model: Optional[OpenAIEmbeddings] = None,
-        storage: Optional[Storage] = None,
-        allow_dangerous_deserialization: bool = False
-    ) -> 'VectorStore':
-        """
-        Load a VectorStore from a local directory.
-        
-        Args:
-            path: Path to the directory containing the vector store files
-            embeddings_model: Optional embeddings model to use
-            storage: Optional storage instance to use
-            allow_dangerous_deserialization: Whether to allow deserialization of potentially dangerous data
-            
-        Returns:
-            A new VectorStore instance
-        """
-        path = Path(path)
-        if not path.exists():
-            raise ValueError(f"Directory {path} does not exist")
-            
-        # Create instance
-        instance = cls(
-            dimension=1536,  # OpenAI embeddings dimension
-            storage=storage
-        )
-        
-        # Load FAISS index using LangChain's implementation
-        instance.vector_store = FAISS.load_local(
-            path,
-            embeddings_model or instance.embeddings_model,
-            allow_dangerous_deserialization=allow_dangerous_deserialization
-        )
-        
-        return instance
-
-    def save_local(self, path: str) -> None:
-        """
-        Save the VectorStore to a local directory.
-        
-        Args:
-            path: Path to save the vector store files
-        """
-        if self.vector_store is None:
-            raise ValueError("No vector store to save")
-        self.vector_store.save_local(path)
-
-    async def _load_chunks_from_storage(self):
-        """Load all chunks from storage and rebuild the vector index."""
         try:
             # Try to load existing index
             if (self.index_dir / "index.faiss").exists():
@@ -110,6 +64,8 @@ class VectorStore:
                 if all_chunks:
                     self.chunks = all_chunks
                     print(f"Loaded {len(all_chunks)} chunks from storage")
+                
+                self._store_initialized = True
                 return
 
             # If no index exists, load from storage and build new index
@@ -120,20 +76,51 @@ class VectorStore:
                 all_chunks.extend(chunks)
             
             if all_chunks:
-                await self.add_chunks(all_chunks)
+                # Convert chunks to LangChain documents
+                documents = [
+                    Document(
+                        page_content=chunk.content,
+                        metadata={
+                            "chunk_id": chunk.chunk_id,
+                            "document_id": chunk.document_id,
+                            **chunk.metadata
+                        }
+                    )
+                    for chunk in all_chunks
+                ]
+
+                # Create new FAISS index
+                self.vector_store = FAISS.from_documents(documents, self.embeddings_model)
+                self.chunks = all_chunks
                 print(f"Built new index with {len(all_chunks)} chunks")
+                
+                # Save the index
+                self.save_local(str(self.index_dir))
             else:
                 print("No chunks found in storage")
+                # Initialize empty vector store
+                self.vector_store = FAISS.from_texts(
+                    [""], self.embeddings_model
+                )
+            
+            self._store_initialized = True
         except Exception as e:
-            print(f"Error loading chunks from storage: {e}")
+            print(f"Error initializing vector store: {e}")
             raise
+
+    def save_local(self, path: str) -> None:
+        """Save the vector store to a local directory."""
+        if self.vector_store is None:
+            raise ValueError("No vector store to save")
+        self.vector_store.save_local(path)
 
     async def add_chunks(self, chunks: List[DocumentChunk]) -> None:
         """Add document chunks to the vector store."""
-        await self.ensure_initialized()
-        
         if not chunks:
             return
+
+        # Ensure initialized
+        await self._initialize()
 
         # Convert chunks to LangChain documents
         documents = [
@@ -148,7 +135,7 @@ class VectorStore:
             for chunk in chunks
         ]
 
-        # Create or update FAISS index
+        # Add to existing index or create new one
         if self.vector_store is None:
             self.vector_store = FAISS.from_documents(documents, self.embeddings_model)
         else:
@@ -162,8 +149,9 @@ class VectorStore:
 
     async def search(self, query: str, k: int = 5) -> List[Tuple[DocumentChunk, float]]:
         """Search for similar chunks using a query string."""
-        await self.ensure_initialized()
-        
+        # Ensure initialized
+        await self._initialize()
+
         if not self.chunks:
             print("No chunks available for search")
             return []
@@ -200,6 +188,9 @@ class VectorStore:
 
     async def delete_document(self, document_id: str) -> None:
         """Delete all chunks belonging to a specific document."""
+        # Ensure initialized
+        await self._initialize()
+
         # Get chunks to remove
         chunks_to_remove = [chunk for chunk in self.chunks if chunk.document_id == document_id]
         if not chunks_to_remove:
@@ -223,7 +214,8 @@ class VectorStore:
             ]
             self.vector_store = FAISS.from_documents(documents, self.embeddings_model)
         else:
-            self.vector_store = None
+            # Initialize empty vector store
+            self.vector_store = FAISS.from_texts([""], self.embeddings_model)
 
         # Save the updated index
         if self.vector_store:
