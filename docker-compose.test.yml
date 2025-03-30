@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  redis-test:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    volumes:
+      - .:/app
+      - /app/venv
+    environment:
+      - OPENAI_API_KEY=test-key
+      - REDIS_URL=redis://redis-test:6379/0
+      - PYTHONPATH=/app
+      - PYTEST_ADDOPTS=-v --cov=src --cov-report=term-missing
+    depends_on:
+      redis-test:
+        condition: service_healthy
+    command: >
+      sh -c "pip install -r requirements/requirements.txt &&
+             pip install -r requirements/test-requirements.txt &&
+             pytest"
+
+volumes:
+  redis_data:
+    name: qa_openai_test_redis_data 

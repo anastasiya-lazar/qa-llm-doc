@@ -1,4 +1,4 @@
-.PHONY: help install dev docker-build docker-up docker-down docker-logs build-and-up clean test lint format
+.PHONY: help install dev docker-build docker-up docker-down docker-logs build-and-up clean test test-docker lint format
 
 # Default target
 help:
@@ -13,7 +13,8 @@ help:
 	@echo "  make docker-logs - View Docker container logs"
 	@echo "  make build-and-up - Build and start Docker containers in foreground"
 	@echo "  make clean      - Clean up temporary files"
-	@echo "  make test       - Run tests"
+	@echo "  make test       - Run tests locally"
+	@echo "  make test-docker - Run tests in Docker"
 	@echo "  make lint       - Run linters"
 	@echo "  make format     - Format code"
 	@echo ""
@@ -52,6 +53,9 @@ clean:
 # Testing and code quality
 test:
 	. venv/bin/activate && pytest
+
+test-docker:
+	docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
 
 lint:
 	. venv/bin/activate && \

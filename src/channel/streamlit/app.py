@@ -1,8 +1,5 @@
-import json
 import os
-import tempfile
 import uuid
-from pathlib import Path
 from typing import List
 
 import requests
