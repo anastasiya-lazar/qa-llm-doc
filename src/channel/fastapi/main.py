@@ -51,4 +51,4 @@ app.add_exception_handler(Exception, global_exception_handler)
 app.include_router(router)
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT)

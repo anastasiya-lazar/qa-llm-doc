@@ -182,7 +182,7 @@ make docker-all  # Build and start Docker containers
    - Support for document collections and tags
 
 3. **Architecture**:
-   - Move to a proper database for better scalability
+   - Move to a proper database for better scalability, store files in cloud storage
    - Implement distributed processing for large documents
    - Add monitoring prometheus and grafana
    - Add Kubernetes support for production deployment
