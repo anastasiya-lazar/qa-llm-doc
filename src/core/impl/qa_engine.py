@@ -8,18 +8,22 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.schema import Document
 from langchain_openai import ChatOpenAI
 
-from src.core.api.dtos import (DocumentChunk, DocumentReference,
-                               QuestionResponse)
+from src.core.api.dtos import DocumentChunk, DocumentReference, QuestionResponse
+from src.core.impl.logging_config import setup_logger
+
+logger = setup_logger("qa_engine")
 
 
 class QAEngine:
     def __init__(self):
+        logger.info("Initializing QAEngine")
         self.llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0.7)
         self.qa_chain = load_qa_chain(llm=self.llm, chain_type="stuff", verbose=True)
         # Store conversation history
         self.conversation_history = defaultdict(list)
         # Store document history per conversation
         self.conversation_documents = defaultdict(list)
+        logger.info("QAEngine initialized successfully")
 
     async def answer_question(
         self,
@@ -28,6 +32,10 @@ class QAEngine:
         conversation_id: str = None,
     ) -> QuestionResponse:
         """Generate an answer to a question using relevant document chunks and conversation history."""
+        logger.info(f"Processing question for conversation_id: {conversation_id}")
+        logger.debug(f"Question: {question}")
+        logger.debug(f"Number of relevant chunks: {len(relevant_chunks)}")
+
         # Convert chunks to LangChain documents
         documents = [
             Document(
@@ -43,6 +51,9 @@ class QAEngine:
 
         # If conversation_id is provided, add previous context
         if conversation_id:
+            logger.debug(
+                f"Adding previous context for conversation_id: {conversation_id}"
+            )
             # Add previous documents to current context
             previous_documents = self.conversation_documents[conversation_id]
             documents.extend(previous_documents)
@@ -56,8 +67,10 @@ class QAEngine:
 
         # Generate answer using the QA chain
         start_time = datetime.now()
+        logger.debug("Starting QA chain processing")
         result = await self.qa_chain.arun(input_documents=documents, question=question)
         processing_time = (datetime.now() - start_time).total_seconds()
+        logger.info(f"QA chain processing completed in {processing_time:.2f} seconds")
 
         # Create document references
         source_documents = [
@@ -73,10 +86,16 @@ class QAEngine:
 
         # Update conversation history if conversation_id is provided
         if conversation_id:
+            logger.debug(
+                f"Updating conversation history for conversation_id: {conversation_id}"
+            )
             self.conversation_history[conversation_id].append((question, result))
             # Update document history with new documents
             self.conversation_documents[conversation_id].extend(documents)
 
+        logger.info(
+            f"Successfully generated answer for conversation_id: {conversation_id}"
+        )
         return QuestionResponse(
             answer=result,
             source_documents=source_documents,
@@ -88,6 +107,9 @@ class QAEngine:
         self, question: str, answer: str, relevant_chunks: List[DocumentChunk]
     ) -> List[str]:
         """Generate follow-up questions based on the answer and context."""
+        logger.info("Generating follow-up questions")
+        logger.debug(f"Original question: {question}")
+
         prompt = ChatPromptTemplate.from_messages(
             [
                 (
@@ -112,8 +134,11 @@ class QAEngine:
 
         # Create and run the chain
         chain = LLMChain(llm=self.llm, prompt=prompt)
+        logger.debug("Starting follow-up questions generation")
         result = await chain.arun(question=question, answer=answer, context=context)
 
         # Parse the result into a list of questions
         questions = [q.strip() for q in result.split("\n") if q.strip()]
-        return questions[:3]  # Ensure we only return 3 questions
+        questions = questions[:3]
+        logger.info(f"Generated {len(questions)} follow-up questions")
+        return questions

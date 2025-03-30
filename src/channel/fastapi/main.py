@@ -10,8 +10,7 @@ from slowapi.errors import RateLimitExceeded
 
 from src.channel.fastapi.config import get_settings
 from src.channel.fastapi.routes import router
-from src.channel.fastapi.routes.base import (global_exception_handler,
-                                             rate_limit_handler)
+from src.channel.fastapi.routes.base import global_exception_handler, rate_limit_handler
 
 # Load environment variables
 load_dotenv()

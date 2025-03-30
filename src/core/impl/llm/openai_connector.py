@@ -8,7 +8,7 @@ from .base import BaseLLMConnector, LLMConfig, LLMResponse
 
 class OpenAIConnector(BaseLLMConnector):
     """OpenAI implementation of the LLM connector."""
-    
+
     def __init__(self, config: LLMConfig):
         super().__init__(config)
         self.client = AsyncOpenAI(
@@ -23,7 +23,7 @@ class OpenAIConnector(BaseLLMConnector):
             openai_api_base=config.api_base,
             **config.additional_params
         )
-    
+
     async def generate(
         self,
         prompt: str,
@@ -36,7 +36,7 @@ class OpenAIConnector(BaseLLMConnector):
         if system_message:
             messages.append({"role": "system", "content": system_message})
         messages.append({"role": "user", "content": prompt})
-        
+
         response = await self.client.chat.completions.create(
             model=self.config.model_name,
             messages=messages,
@@ -44,7 +44,7 @@ class OpenAIConnector(BaseLLMConnector):
             max_tokens=max_tokens or self.config.max_tokens,
             **kwargs
         )
-        
+
         return LLMResponse(
             content=response.choices[0].message.content,
             model=response.model,
@@ -53,9 +53,9 @@ class OpenAIConnector(BaseLLMConnector):
             additional_info={
                 "role": response.choices[0].message.role,
                 "index": response.choices[0].index,
-            }
+            },
         )
-    
+
     async def generate_stream(
         self,
         prompt: str,
@@ -68,7 +68,7 @@ class OpenAIConnector(BaseLLMConnector):
         if system_message:
             messages.append({"role": "system", "content": system_message})
         messages.append({"role": "user", "content": prompt})
-        
+
         stream = await self.client.chat.completions.create(
             model=self.config.model_name,
             messages=messages,
@@ -77,7 +77,7 @@ class OpenAIConnector(BaseLLMConnector):
             stream=True,
             **kwargs
         )
-        
+
         async for chunk in stream:
             if chunk.choices[0].delta.content:
                 yield LLMResponse(
@@ -88,12 +88,11 @@ class OpenAIConnector(BaseLLMConnector):
                     additional_info={
                         "role": chunk.choices[0].delta.role,
                         "index": chunk.choices[0].index,
-                    }
+                    },
                 )
-    
+
     async def get_embeddings(self, text: str) -> List[float]:
         response = await self.client.embeddings.create(
-            model="text-embedding-ada-002",
-            input=text
+            model="text-embedding-ada-002", input=text
         )
-        return response.data[0].embedding 
+        return response.data[0].embedding

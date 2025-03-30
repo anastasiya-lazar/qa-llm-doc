@@ -177,23 +177,17 @@ make docker-all  # Build and start Docker containers
 2. **Features**:
    - Add support for more document formats
    - Implement document versioning
-   - Add user authentication and authorization
+   - Add user authentication and authorization, store conversations
    - Support for document collections and tags
 
 3. **Architecture**:
    - Move to a proper database for better scalability
    - Implement distributed processing for large documents
-   - Add monitoring and logging
+   - Add monitoring prometheus and grafana
    - Add Kubernetes support for production deployment
+   - Implement CI/CD pipeline
 
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+4. **Testing**:
+   - Increase test coverage with more unit and integration tests
+   - Implement end-to-end testing with real-world scenarios
+   - Add performance testing for scalability

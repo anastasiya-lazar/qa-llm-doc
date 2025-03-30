@@ -3,8 +3,12 @@ from typing import Optional
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 
 from src.channel.fastapi.config import get_settings
-from src.core.api.dtos import (ComplexQueryRequest, ComplexQueryResponse,
-                               QuestionRequest, QuestionResponse)
+from src.core.api.dtos import (
+    ComplexQueryRequest,
+    ComplexQueryResponse,
+    QuestionRequest,
+    QuestionResponse,
+)
 from src.core.impl.agent_system import AgentSystem
 from src.core.impl.in_memory_qa import InMemoryQA
 from src.core.impl.qa_engine import QAEngine

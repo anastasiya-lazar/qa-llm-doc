@@ -6,8 +6,9 @@ from pydantic import BaseModel, ConfigDict
 
 class LLMConfig(BaseModel):
     """Base configuration for LLM providers."""
+
     model_config = ConfigDict(protected_namespaces=())
-    
+
     model_name: str
     temperature: float = 0.7
     max_tokens: Optional[int] = None
@@ -18,8 +19,9 @@ class LLMConfig(BaseModel):
 
 class LLMResponse(BaseModel):
     """Standardized response from LLM providers."""
+
     model_config = ConfigDict(protected_namespaces=())
-    
+
     content: str
     model: str
     usage: Dict[str, int]
@@ -29,10 +31,10 @@ class LLMResponse(BaseModel):
 
 class BaseLLMConnector(ABC):
     """Abstract base class for LLM connectors."""
-    
+
     def __init__(self, config: LLMConfig):
         self.config = config
-    
+
     @abstractmethod
     async def generate(
         self,
@@ -44,7 +46,7 @@ class BaseLLMConnector(ABC):
     ) -> LLMResponse:
         """Generate a response from the LLM."""
         pass
-    
+
     @abstractmethod
     async def generate_stream(
         self,
@@ -56,8 +58,8 @@ class BaseLLMConnector(ABC):
     ) -> AsyncGenerator[LLMResponse, None]:
         """Generate a streaming response from the LLM."""
         pass
-    
+
     @abstractmethod
     async def get_embeddings(self, text: str) -> List[float]:
         """Get embeddings for the given text."""
-        pass 
+        pass
