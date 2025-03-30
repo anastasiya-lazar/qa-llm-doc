@@ -108,6 +108,7 @@ make docker-build  # Build Docker image
 make docker-up    # Start Docker containers
 make docker-down  # Stop Docker containers
 make docker-logs  # View Docker container logs
+make docker-test  # Run tests in Docker container
 make build-and-up # Build and start Docker containers in foreground
 
 # Code quality
